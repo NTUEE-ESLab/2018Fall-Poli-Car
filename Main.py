@@ -21,12 +21,30 @@ SCALAR_WHITE = (255.0, 255.0, 255.0)
 SCALAR_YELLOW = (0.0, 255.0, 255.0)
 SCALAR_GREEN = (0.0, 255.0, 0.0)
 SCALAR_RED = (0.0, 0.0, 255.0)
-
 showSteps = False
 
+
+ 
 ###################################################################################################
 def main():
 
+    time.sleep(0.1)
+    #control class
+    control = Control()
+    #initail serail
+    nano = serial.Serial("/dev/ttyACM0",9600)
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    offset = [0,0,0,0,0]
+    Images=[]
+    N_SLICES = 5 # 4
+    frame_count = 0
+    frame_rate = 0
+    nano_info = 0
+    control_data = 0
+    for q in range(N_SLICES):
+        Images.append(Image())
+    
     blnKNNTrainingSuccessful = DetectChars.loadKNNDataAndTrainKNN()         # attempt KNN training
 
     if blnKNNTrainingSuccessful == False:                               # if KNN training was not successful
@@ -35,24 +53,41 @@ def main():
     # end if
 
     cap = cv2.VideoCapture("nvcamerasrc ! video/x-raw(memory:NVMM), width=(int)1280, height=(int)720,format=(string)I420, framerate=(fraction)30/1 ! nvvidconv flip-method=0 ! video/x-raw, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink")
-    #imgOriginalScene  = cv2.imread("LicPlateImages/1.png")               # open image
+
     while True:
-        #cap = cv2.VideoCapture("nvcamerasrc ! "
-        #           "video/x-raw(memory:NVMM), width=(int)2592, height=(int)1458, format=(string)I420, framerate=(fraction)30/1 ! "
-        #           "nvvidconv ! video/x-raw, width=(int){}, height=(int){}, format=(string)BGRx ! "
-        #           "videoconvert ! appsink")
-        #onBoardCam = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
         if not cap.isOpened():
             return
+        if(nano.inWaiting() ):
+            nano_info = nano.readline()
+        if frame_count == 0:
+            start_time = time.time()
+      
+        frame_count =  frame_count +1 
+
         ret, imgOriginalScene = cap.read()
-        cv2.imshow('debug',imgOriginalScene)
+        img = imgOriginalScene.copy()
+        # cv2.imshow('debug',imgOriginalScene)
         if imgOriginalScene is None:                            # if image was not read successfully
             print("\nerror: image not read from file \n\n")  # print error message to std out
             os.system("pause")                                  # pause so user can see error message
             return                                              # and exit program
-    # end if
+        # track recognition
+        ###########################################################################################
+        else:
+             SlicePart(imgOriginalScene, Images, N_SLICES)
+             for i in range(N_SLICES):
+                 offset[i] = Images[i].dir -1
+        control_data = control.update(offset)
+        print(control_data)
+        nano.write( bytes(control_data, 'UTF-8') )
+        if frame_count == 15:
+            frame_rate = round(frame_count / (time.time() - start_time), 3)
+        #print information
+        print(nano_info, "  fps= ", frame_rate)
+        nano_info = ""
+        ##########################################################################################
 
-        listOfPossiblePlates = DetectPlates.detectPlatesInScene(imgOriginalScene)           # detect plates
+        listOfPossiblePlates = DetectPlates.detectPlatesInScene(img)           # detect plates
    
         listOfPossiblePlates = DetectChars.detectCharsInPlates(listOfPossiblePlates)        # detect chars in plates
  
@@ -68,20 +103,27 @@ def main():
 
                 # suppose the plate with the most recognized chars (the first plate in sorted by string length descending order) is the actual plate
             licPlate = listOfPossiblePlates[0]
-
+            
             #cv2.imshow("imgPlate", licPlate.imgPlate)           # show crop of plate and threshold of plate
             #cv2.imshow("imgThresh", licPlate.imgThresh)
 
             if len(licPlate.strChars) == 0:                     # if no chars were found in the plate
                 print("\nno characters were detected\n\n")  # show message
-        #        return                                          # and exit program
         # end if
-
             drawRedRectangleAroundPlate(imgOriginalScene, licPlate)             # draw red rectangle around plate
 
             print("\nlicense plate read from image = " + licPlate.strChars + "\n")  # write license plate text to std out
             print("----------------------------------------")
 
+            #######################################################################################################
+            if len(licPlate.strChars) >= 3:
+                if (licPlate.strChars == "ST0P"):# && licPlate.strChars[1] == 'T' && licPlate.strChars[2] == '0' && licPlate.strChars[3] == 'P'):
+                    if(nano.inWaiting()):
+                        nano_info = nano.readline()    
+                        # print('fuck') # check
+                    nano.write(bytes("r200000\n", 'UTF-8'))
+                    nano_info = ""
+            ######################################################################################################
             writeLicensePlateCharsOnImage(imgOriginalScene, licPlate)           # write license plate text on the image
 
             #cv2.imshow("imgOriginalScene", imgOriginalScene)                # re-show scene image

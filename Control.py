@@ -25,30 +25,44 @@ class Control():
         data_count = 0
         flag = 0
 
+        #j = len(data)-1
+        #while j>=0:
+        #   if(data[j] != -1000):
+        #     if(j-1>=0):
+        #       if(math.fabs( data[j] - data[j-1]) > self.max_line_err):
+        #         data[j] = -1000
+        #     if(j+1<=len(data)-1):
+        #       if(math.fabs( data[j] - data[j+1]) > self.max_line_err):
+        #         data[j] = -1000
+        #   j -=1   
         for j in range(len(data)):
-          if(data[j] != -1000):
-            if(j-1>=0):
-              if(math.fabs( data[j] - data[j-1]) > self.max_line_err):
-                data[j] = -1000
-            if(j+1<=len(data)-1):
-              if(math.fabs( data[j] - data[j+1]) > self.max_line_err):
-                data[j] = -1000
-
+           if(data[j] != -1000):
+             if(j-1>=0):
+               if(math.fabs( data[j] - data[j-1]) > self.max_line_err):
+                 data[j] = -1000
+             if(j+1<=len(data)-1):
+               if(math.fabs( data[j] - data[j+1]) > self.max_line_err):
+                 data[j] = -1000
+      
        # sum = data[0]*1 + data[1]*1 + data[2]*0.5 + data[0]*1
 
 
 
         for i in range(len(data)):
+            # 0~4 from up to down
+            print(data[i])
             if(data[i] != -1000):
                 flag = 1
                 if(i == 3):                  
-                    dir += data[i]*0.3
+                    dir += data[i]* 0.3
                 elif(i == 2):
-                    dir += data[i]*0.5
+                    dir += data[i]* 0.5
                 elif(i == 1):
-                    dir += data[i]*1
+                    dir += data[i]* 1
+                elif(i == 4):
+                    dir += data[i] * 1 
                 else:
-                    dir += data[i]
+                    dir += data[i] 
                 data_count += 1
         if(flag):
           temp_angle = (dir/data_count) * self.turn_factor
@@ -73,7 +87,7 @@ class Control():
           temp_fan_speed = 75
         self.angle = int(temp_angle)
         self.fan_speed = int(temp_fan_speed)
-        return 'r' + str(self.servo_dir*self.angle) + 'f' + str(self.fan_speed) + '\n'
+        return 'r' + str(self.servo_dir*self.angle) + '\n'
         '''
         if( int(temp_angle) != int(self.angle)  or int(temp_fan_speed) != int(self.fan_speed) ):
             self.angle = int(temp_angle)
